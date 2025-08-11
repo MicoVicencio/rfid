@@ -4,7 +4,8 @@ from tkinter import ttk
 import sqlite3
 import threading
 import tkinter.font as tkfont
-from PIL import Image, ImageTk 
+from PIL import Image, ImageTk
+import time
 
 
 class UI:
@@ -19,64 +20,119 @@ class UI:
         self.student_rfid = []
         self.parents_rfid = []
         self.pickup_rfid = set()
-        self.pickup_list = {}
-    
-        
+
+        # Demo data with timestamps
+        now = time.time()
+        self.pickup_list = {
+            "RFID001": {"name": "Juan Dela Cruz", "section": "Grade 6 - A", "time": now},
+            "RFID002": {"name": "Maria Santos", "section": "Grade 6 - B", "time": now},
+            "RFID003": {"name": "Pedro Reyes", "section": "Grade 5 - A", "time": now},
+            "RFID004": {"name": "Ana Dizon", "section": "Grade 4 - C", "time": now},
+            "RFID005": {"name": "Josefina Cruz", "section": "Grade 5 - B", "time": now},
+            "RFID006": {"name": "Carlos Lim", "section": "Grade 3 - A", "time": now},
+            "RFID007": {"name": "Sofia Tan", "section": "Grade 2 - C", "time": now},
+            "RFID008": {"name": "Miguel Bautista", "section": "Grade 1 - A", "time": now},
+            "RFID009": {"name": "Elena Ramos", "section": "Kinder - B", "time": now},
+            "RFID010": {"name": "Ricardo Villanueva", "section": "Grade 6 - C", "time": now},
+            "RFID011": {"name": "Mark Lopez", "section": "Grade 5 - C", "time": now},
+            "RFID012": {"name": "Jessa Morales", "section": "Grade 3 - B", "time": now},
+            "RFID013": {"name": "Paolo Garcia", "section": "Grade 2 - A", "time": now},
+            "RFID014": {"name": "Liza Fernandez", "section": "Grade 4 - A", "time": now},
+            "RFID015": {"name": "Nina Villanueva", "section": "Grade 6 - D", "time": now},
+            "RFID016": {"name": "Andrei Cruz", "section": "Grade 5 - A", "time": now},
+            "RFID017": {"name": "Kristel Ramos", "section": "Grade 1 - C", "time": now},
+            "RFID018": {"name": "Allan Diaz", "section": "Grade 3 - C", "time": now},
+            "RFID019": {"name": "Mica Torres", "section": "Grade 2 - B", "time": now},
+            "RFID020": {"name": "Robert Mendoza", "section": "Grade 6 - E", "time": now}
+        }
+
         self.root = tk.Tk()
         self.root.title("MAIN UI")
-        self.root.state('zoomed')  # Fullscreen with title bar
+        self.root.state('zoomed')
 
-        # Load seal.png image with Pillow
         self.load_seal_image()
 
-        # Setup style and Treeview as before
         self.big_font = tkfont.Font(family="Arial", size=30)
 
-        # Display the image instead of the label
         self.image_label = ttk.Label(self.root, image=self.seal_photo)
         self.image_label.pack(pady=10)
 
         style = ttk.Style(self.root)
         style.configure("Treeview",
                         font=self.big_font,
-                        rowheight=50)
+                        rowheight=50,
+                        borderwidth=2,
+                        relief="solid")
         style.configure("Treeview.Heading", font=self.big_font)
         style.map('Treeview', background=[('selected', '#347083')])
-        style.configure("oddrow", background="white")
-        style.configure("evenrow", background="#e6f2ff")
 
         columns = ("name", "section")
-        self.tree = ttk.Treeview(self.root, columns=columns, show='headings')
+        self.tree = ttk.Treeview(self.root, columns=columns, show='headings', style="Treeview")
         self.tree.heading("name", text="Name", anchor='center')
         self.tree.heading("section", text="Section", anchor='center')
         self.tree.column("name", width=600, anchor='center')
         self.tree.column("section", width=300, anchor='center')
-        self.tree.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+
+        self.tree.tag_configure('oddrow', background="white")
+        self.tree.tag_configure('evenrow', background="#e6f2ff")
+
+        self.tree.pack(fill=tk.BOTH, expand=True, padx=20, pady=20, ipadx=2, ipady=2)
+
+        self.current_index = 0
+        self.items_per_page = 10
+
+        self.update_treeview()
 
     def load_seal_image(self):
-        # Open the image with PIL and convert for Tkinter
         image = Image.open("seal.png")
-        # Optionally resize if image is too big
         max_width, max_height = 700, 700
         image.thumbnail((max_width, max_height), Image.LANCZOS)
         self.seal_photo = ImageTk.PhotoImage(image)
 
-    def get_pickup_details(self):
-        self.pickup_list.clear()
-        for student in self.student_waiting.values():
-            if student["student_rfid"] in self.pickup_rfid:
-                self.pickup_list[student["student_rfid"]] = {
-                    "name": student["name"],
-                    "section": student["section"]
-                }
-        self.update_treeview()
+    def cleanup_expired_pickups(self):
+        now = time.time()
+        expired_rfids = [
+            rfid for rfid, info in self.pickup_list.items()
+            if "time" in info and now - info["time"] >= 10
+        ]
+        for rfid in expired_rfids:
+            del self.pickup_list[rfid]
 
     def update_treeview(self):
+        self.cleanup_expired_pickups()  # Auto-remove expired entries
+
         for row in self.tree.get_children():
             self.tree.delete(row)
-        for index, (rfid, info) in enumerate(self.pickup_list.items()):
-            tag = 'evenrow' if index % 2 == 0 else 'oddrow'
+
+        data_items = list(self.pickup_list.items())
+        page_data = data_items[self.current_index:self.current_index + self.items_per_page]
+
+        for idx, (rfid, info) in enumerate(page_data):
+            tag = 'evenrow' if idx % 2 == 0 else 'oddrow'
             self.tree.insert("", "end", values=(info["name"], info["section"]), tags=(tag,))
+
+        self.current_index += self.items_per_page
+        if self.current_index >= len(data_items):
+            self.current_index = 0
+
+        self.root.after(8000, self.update_treeview)
+
+    def get_pickup_details(self):
+        current_time = time.time()
+        for rfid in self.pickup_rfid:
+            self.cursor.execute(
+                "SELECT name, section FROM student WHERE student_rfid = ?",
+                (rfid,)
+            )
+            row = self.cursor.fetchone()
+            if row:
+                name, section = row
+                self.pickup_list[rfid] = {
+                    "name": name,
+                    "section": section,
+                    "time": current_time
+                }
+        self.update_treeview()
 
          
             
@@ -147,7 +203,6 @@ class UI:
     def comparing(self):
         self.student_rfid = [rfid["student_rfid"] for rfid in self.student_waiting.values()]
         self.parents_rfid = [rfid["student_rfid"] for rfid in self.parents_waiting.values()]
-        
         
         for rfid in self.student_rfid:
             if rfid in self.parents_rfid:
