@@ -6,6 +6,7 @@ import keyboard  # Make sure this is installed
 import time
 from tkinter import ttk
 import tkinter.font as tkfont
+import logs 
 
 
 class RFID:
@@ -73,10 +74,20 @@ class RFID:
                                font=("Arial", 14, "bold"), command=self.update_user)
         update_btn.grid(row=1, column=0, padx=20, pady=10)
 
+        # New View Logs button in the middl
+
         delete_btn = tk.Button(button_frame, text="Delete User", width=20, height=2, bg="#F44336", fg="white",
                                font=("Arial", 14, "bold"), command=self.delete_user)
         delete_btn.grid(row=1, column=1, padx=20, pady=10)
+        
+        logs_btn = tk.Button(button_frame, text="View Logs", width=20, height=2, bg="#9C27B0", fg="white",
+                             font=("Arial", 14, "bold"), command=self.view_logs)
+        logs_btn.grid(row=2, column=0,columnspan=2, padx=20, pady=10)
 
+    def view_logs(self):
+            show = logs.LogViewer()
+            show.run_log()
+            
     def add_user(self):
         add_window = tk.Toplevel(self.root)
         add_window.title("Add User")
